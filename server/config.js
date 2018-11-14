@@ -8,7 +8,7 @@ exports.config = {
 
     port : 8081,//服务器端口
     maxValue : 10,//每个用户允许的变量数量
-
+    maxDataSize : 16 * 1024 * 1024,//每月最大限制流量（字节为单位）（0为无限制）
     minAccLen : 6,//用户名最小长度
     minPassLen : 8,//密码最小长度
 

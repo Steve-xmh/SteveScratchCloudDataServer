@@ -8,13 +8,13 @@ const minPassLen = config.config.minPassLen//密码最小长度
  */
 exports.runCommand = function (command) {
     var args = command.split(" ");
-    if (args.length == 0){
+    if (args.length == 0) {
         return
     }
     var cmd = args[0];
     if (commands.commands[cmd] != undefined) {
         args.shift();
-        commands.commands[cmd](args,this)
+        commands.commands[cmd](args, this)
         return
     } else {
         console.log("未知的指令：" + command);
@@ -45,6 +45,10 @@ var logininUsers = {};//每个用户所在的Socket客户端
 
 exports.users = users;
 exports.logininUsers = logininUsers;
+
+function sendDataAndRecordValue(user, data) {
+
+}
 
 /**
  * 云数据连接
@@ -106,7 +110,8 @@ exports.socketServer = function (socket) {
                 var logData = {
                     pass: dataJSON.pass,
                     baned: false,
-                    banedReason : "",
+                    banedReason: "",
+                    dataUsedSize: 0,
                     regTime: new Date().toJSON()
                 }
 
