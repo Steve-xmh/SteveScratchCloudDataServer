@@ -3,17 +3,13 @@ var net = require("net");
 var ssServer = require('./server');
 const config = require("./config")
 
-if (!fs.existsSync("./users/")) {
-    fs.mkdirSync("./users/")//用户信息
-}
-if (!fs.existsSync("./cloudData/")) {
-    fs.mkdirSync("./cloudData/")//云数据
-}
-
+if (!fs.existsSync("./users/")) fs.mkdirSync("./users/");//用户信息
+if (!fs.existsSync("./cloudData/")) fs.mkdirSync("./cloudData/");//云数据
+//29//27//13.5
 var welcomeMsg = [
     '-----------------------------',
     '| SteveScratch 云数据服务器 |',
-    '|           DEMO版          |',
+    '|' + (' ').repeat(Math.ceil(12.5 - config.serverInfo.version.length / 2)) + config.serverInfo.version +"版" + (' ').repeat(12.5 - config.serverInfo.version.length / 2) + '|',
     '|      Made By SteveXMH     |',
     '-----------------------------',
     ''
@@ -49,6 +45,8 @@ if (!fs.existsSync("./serverStat.json")) {
             data.dataUsedSize = 0;
             fs.writeFileSync("./users/" + users[user], JSON.stringify(data))
         }
+        serverStat.mouth = lunchTime.getMonth()
+        fs.writeFileSync("./serverStat.json", JSON.stringify(serverStat))
         console.log("清零完毕！继续启动服务器！")
     }
 }
@@ -72,7 +70,7 @@ process.stdin.on('readable', () => {
         //console.log(chunk.length)
         if (chunk == "stop") {
             console.log("正在关闭服务器！");
-            ssServer.boardcastClients(JSON.stringify({ cmd: "serverClosed" }));
+            ssServer.boardcastClients(JSON.stringify({ cmd: "serverClosed" }, true));
             hostServer.close();
             process.exit(0);
         } else {

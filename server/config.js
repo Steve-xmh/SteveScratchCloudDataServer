@@ -35,3 +35,10 @@ exports.config = {
         }
     }
 }
+/**
+ * 此处为服务器所需要的信息，如果不是二次开发切勿修改！
+ */
+const serverInfo = {
+    version : "DEMO"
+}
+exports.serverInfo = serverInfo
