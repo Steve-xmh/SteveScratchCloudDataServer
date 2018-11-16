@@ -58,9 +58,11 @@ exports.logininUsers = logininUsers;
 /*
 	权限说明：
 	每个键值对应一个权限值，下表对应了每个数值所可用的权限
+	当然，服务器管理员可以自由读写值和设置权限
+	未登录访客将不会记录流量！
 	读：
 	┌───────────┬───────┬───────────┬───────────────┐
-	│对应值		│拥有者	│非拥有者	│访客（未登录）	│
+	│对应值		│拥有者2│非拥有者1	│访客（未登录）0│
 	├───────────┼───────┼───────────┼───────────────┤
 	│0			│√		│√			│√				│
 	├───────────┼───────┼───────────┼───────────────┤
@@ -72,7 +74,7 @@ exports.logininUsers = logininUsers;
 	└───────────┴───────┴───────────┴───────────────┘
 	写：
 	┌───────────┬───────┬───────────┬───────────────┐
-	│对应值		│拥有者	│非拥有者	│访客（未登录）	│
+	│对应值		│拥有者2│非拥有者1	│访客（未登录）0│
 	├───────────┼───────┼───────────┼───────────────┤
 	│0			│√		│√			│√				│
 	├───────────┼───────┼───────────┼───────────────┤
@@ -80,22 +82,82 @@ exports.logininUsers = logininUsers;
 	├───────────┼───────┼───────────┼───────────────┤
 	│2			│√		│			│				│
 	├───────────┼───────┼───────────┼───────────────┤
-	│3			│√		│			│				│//仅服务器管理员可以设置
+	│3			│		│			│				│//仅服务器管理员可以设置
 	└───────────┴───────┴───────────┴───────────────┘
 */
-function setDataAndRecordValue(user, key, data) {
-	if(fs.existsSync("./cloudData/" + user + ".json")){
-
-	}else{
-		var newData = {
-			data : {},//数据存储的地方
-			permission : {}//权限清单，对应每个键值
+function setDataAndRecordValue(socket, user, key, data) {
+	if (fs.existsSync("./cloudData/" + user + ".json")) {
+		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		var permission = (newData.permission[key] == undefined ? 0 : newData.permission[key]);
+		var userType = getUserType(socket);
+		if (userType <= permission) {
+			newData.data[key] = data;
 		}
-		return null;
+	} else {
+		var newData = {
+			data: {},//数据存储的地方
+			permission: {}//权限清单，对应每个键值
+		}
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
 	}
 }
 
+function getDataAndRecordValue(socket, user, key) {
+	if (fs.existsSync("./cloudData/" + user + ".json")) {
+		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		var permission = (newData.permission[key] == undefined ? 0 : newData.permission[key]);
+		var userType = getUserType(socket);
+		if (userType <= permission) {
+			return newData.data[key];
+		}
+		return undefined;
+	} else {
+		var newData = {
+			data: {},//数据存储的地方
+			permission: {}//权限清单，对应每个键值
+		}
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return undefined;
+	}
+}
+
+function isUserLogined(socket) {//用户是否登录
+	var isLoginin = false;
+	for (var i = 0; i < users.length; i++) {
+		var address = socket.address().address + ":" + socket.address().port;
+		for (var n in logininUsers) {
+			if (logininUsers[n] == socket) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+function getUserName(socket) {
+	for (var i = 0; i < users.length; i++) {
+		var address = socket.address().address + ":" + socket.address().port;
+		for (var n in logininUsers) {
+
+		}
+	}
+	return null;
+}
+
+function getUserTypeFromName(name) {
+	for (var n in logininUsers) {
+		if (n == name) {
+			return getUserType(logininUsers[n]);
+		}
+	}
+}
+
+function getClientFromAddress(ip) {
+
+}
+
 exports.setDataAndRecordValue = setDataAndRecordValue;
+exports.getDataAndRecordValue = getDataAndRecordValue;
 
 /**
  * 云数据连接
@@ -169,6 +231,8 @@ exports.socketServer = function (socket) {
 
 			case "setValue"://请求设置云数据
 
+			case "hb":
+				return socket.write(JSON.stringify({ cmd: "hb", stat: 0, ver: config.serverInfo.version }));//心跳包
 			default:
 				console.log("[信息接收]接收了未知的指令：" + dataJSON.cmd);
 		}
@@ -210,7 +274,7 @@ exports.socketServer = function (socket) {
 
 	})
 
-	socket.write(JSON.stringify({ cmd: "requireLogin" }))
+	socket.write(JSON.stringify({ cmd: "requireLogin", ver: config.serverInfo.version }))
 	console.log("已请求客户端进行登录！");
 
 };
