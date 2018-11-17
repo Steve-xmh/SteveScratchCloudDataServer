@@ -35,7 +35,7 @@ exports.commands = {
         var id = args[0];//用户名称或ip地址
         var users = server.users;
         for (var socket in users) {
-            if (users[socket].socket.address().address == id) {
+            if (users[socket].address().address == id) {
                 users[socket].end(JSON.stringify({ cmd: "kicked" }));
                 users[socket].destory();
             }
