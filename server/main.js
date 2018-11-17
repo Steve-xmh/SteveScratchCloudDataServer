@@ -66,7 +66,7 @@ process.stdin.on('readable', () => {
     var chunk = process.stdin.read();
 
     if (chunk !== null) {
-        chunk = chunk.toString().substring(0, chunk.length - 2);
+        chunk = chunk.toString().replace(/[\r\n]/g,"");
         //console.log(chunk.length)
         if (chunk == "stop") {
             console.log("正在关闭服务器！");
