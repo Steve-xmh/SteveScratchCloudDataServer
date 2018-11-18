@@ -25,22 +25,6 @@ function formatSize(size, useLitePower) {
 	}
 	return size.toFixed(2) + sizes[unit];
 }
-/*
-  if not options.h then
-    return tostring(size)
-  elseif type(size) == "string" then
-    return size
-  end
-  local sizes = {"", "K", "M", "G"}
-  local unit = 1
-  local power = options.si and 1000 or 1024
-  while size > power and unit < #sizes do
-    unit = unit + 1
-    size = size / power
-  end
-  return math.floor(size * 10) / 10 .. sizes[unit]
-end
-*/
 
 /**
  * 广播所有客户端
