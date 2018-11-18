@@ -3,6 +3,63 @@ const commands = require("./commands")
 const minAccLen = config.config.minAccLen //用户名最小长度
 const minPassLen = config.config.minPassLen//密码最小长度
 
+var fs = require("fs");
+var users = [];//正在连接的Socket客户端
+var logininUsers = {};//每个用户所在的Socket客户端
+var globalDataSize = 0;
+
+exports.users = users;
+exports.logininUsers = logininUsers;
+exports.lastGlobalDataSize = 0;
+
+exports.getCurGlobalDataSize = function () { return globalDataSize };
+
+function formatSize(size, useLitePower) {
+	var sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "BB", "NB", "DB"];
+	var unit = 0;
+	var power = useLitePower ? 1000 : 1024;
+	while (size > power && unit < sizes.length)
+	{
+		unit++;
+		size = size / power
+	}
+	return size.toFixed(2) + sizes[unit];
+}
+/*
+  if not options.h then
+    return tostring(size)
+  elseif type(size) == "string" then
+    return size
+  end
+  local sizes = {"", "K", "M", "G"}
+  local unit = 1
+  local power = options.si and 1000 or 1024
+  while size > power and unit < #sizes do
+    unit = unit + 1
+    size = size / power
+  end
+  return math.floor(size * 10) / 10 .. sizes[unit]
+end
+*/
+
+/**
+ * 广播所有客户端
+ * @param msg 要发送的信息，最好是JSON字符串
+ * @param boardcastAll 是否广播未登录的用户，否则只广播已登陆的用户
+ */
+exports.boardcastClients = function (msg, boardcastAll) {
+	if (boardcastAll) {
+		for (var i = 0; i < users.length; i++) {
+			users[i].write(msg);
+		}
+	} else {
+		for (var user in logininUsers) {
+			logininUsers[user].write(msg);
+		}
+	}
+
+}
+
 /**
  * 执行服务器指令
  */
@@ -20,31 +77,6 @@ exports.runCommand = function (command) {
 		console.log("未知的指令：" + command);
 	}
 }
-
-/**
- * 广播所有客户端
- * @param msg 要发送的信息，最好是JSON字符串
- * @param boardcastAll 是否广播未登录的用户，否则只广播已登陆的用户
- */
-exports.boardcastClients = function (msg, boardcastAll) {
-	if (boardcastAll) {
-		for (var user in users) {
-			users[user].write(msg);
-		}
-	} else {
-		for (var user in logininUsers) {
-			logininUsers[user].write(msg);
-		}
-	}
-
-}
-
-var fs = require("fs");
-var users = [];//正在连接的Socket客户端
-var logininUsers = {};//每个用户所在的Socket客户端
-
-exports.users = users;
-exports.logininUsers = logininUsers;
 
 /**
  * 设置/获取用户区域中的值
@@ -85,32 +117,28 @@ exports.logininUsers = logininUsers;
 	│3			│		│			│				│//仅服务器管理员可以设置
 	└───────────┴───────┴───────────┴───────────────┘
 */
-function setDataAndRecordValue(socket, user, key, data) {
+function setDataValue(user, key, data) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
 		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
-		var permission = (newData.permission[key] == undefined ? 0 : newData.permission[key]);
-		var userType = getUserType(socket);
-		if (userType <= permission) {
-			newData.data[key] = data;
-		}
+		newData.data[key] = data;
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
 	} else {
 		var newData = {
-			data: {},//数据存储的地方
-			permission: {}//权限清单，对应每个键值
+			data: {
+				key: data
+			},//数据存储的地方
+			permission: {
+				key: 1
+			}//权限清单，对应每个键值
 		}
 		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
 	}
 }
 
-function getDataAndRecordValue(socket, user, key) {
+function getDataValue(user, key) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
 		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
-		var permission = (newData.permission[key] == undefined ? 0 : newData.permission[key]);
-		var userType = getUserType(socket);
-		if (userType <= permission) {
-			return newData.data[key];
-		}
-		return undefined;
+		return newData.data[key];
 	} else {
 		var newData = {
 			data: {},//数据存储的地方
@@ -121,52 +149,75 @@ function getDataAndRecordValue(socket, user, key) {
 	}
 }
 
-function isUserLogined(socket) {//用户是否登录
-	var isLoginin = false;
-	for (var i = 0; i < users.length; i++) {
-		var address = socket.address().address + ":" + socket.address().port;
-		for (var n in logininUsers) {
-			if (logininUsers[n] == socket) {
-				return true
-			}
+function getDataPermission(user, key) {
+	if (fs.existsSync("./cloudData/" + user + ".json")) {
+		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		return newData.permission[key] === undefined ? 0 : newData.permission[key];
+	} else {
+		var newData = {
+			data: {},//数据存储的地方
+			permission: {}//权限清单，对应每个键值
 		}
-	}
-	return false
-}
-
-function getUserName(socket) {
-	for (var i = 0; i < users.length; i++) {
-		var address = socket.address().address + ":" + socket.address().port;
-		for (var n in logininUsers) {
-
-		}
-	}
-	return null;
-}
-
-function getUserTypeFromName(name) {
-	for (var n in logininUsers) {
-		if (n == name) {
-			return getUserType(logininUsers[n]);
-		}
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return 1;
 	}
 }
 
-function getClientFromAddress(ip) {
-
+function setDataPermission(user, key, newPermission) {
+	if (fs.existsSync("./cloudData/" + user + ".json")) {
+		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		newData.permission[key] = newPermission;
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+	} else {
+		var newData = {
+			data: {},//数据存储的地方
+			permission: {}//权限清单，对应每个键值
+		}
+		newData.permission[key] = newPermission;
+		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+	}
 }
 
-exports.setDataAndRecordValue = setDataAndRecordValue;
-exports.getDataAndRecordValue = getDataAndRecordValue;
+exports.setDataAndRecordValue = setDataValue;
+exports.getDataAndRecordValue = getDataValue;
+exports.getDataPermission = getDataPermission;
+exports.setDataPermission = setDataPermission;
 
 /**
  * 云数据连接
  */
 exports.socketServer = function (socket) {
 	var address = socket.address().address + ":" + socket.address().port;
+	var lastDataSize = 0;
+	var dataUsedSize = 0;
+	var loginingUser = null;//登录的用户
 	console.log("连接到新客户端：" + address);
 
 	users.push(socket);
+
+	function detectData() {
+		//------------检测数据量
+		var totalBytes = socket.bytesWritten;
+		var addedByteSize = totalBytes - lastDataSize;
+
+		if (totalBytes >= config.config.maxDataSize || dataUsedSize >= config.config.maxDataSize) {
+			if (exports.lastGlobalDataSize + globalDataSize >= config.config.maxGlobalDataSize) {
+				console.log("警告！当前数据传输量已超出定义水平！");
+				console.log("当前全局已写出数据量：" + formatSize(globalDataSize));
+				console.log("原定义标准写出数据量：" + formatSize(config.config.maxGlobalDataSize))
+				console.log("已超出预定的 " + (globalDataSize / config.config.maxGlobalDataSize * 100).toFixed(2) + "%！")
+				return false;//将拒绝回复信息
+			}
+			socket.write(JSON.stringify({ cmd: "outOfDataSize" }));
+			return false;
+		}
+
+		dataUsedSize += addedByteSize;
+		globalDataSize += addedByteSize;
+		lastDataSize = totalBytes;
+		return true;
+		//
+	};
 
 	socket.on('data', function (data) {
 		//console.log("接收到信息！");
@@ -178,6 +229,10 @@ exports.socketServer = function (socket) {
 			console.error("[信息接收]解析数据时发生错误：" + err);
 			console.error("[消息接收]原消息为：" + data);
 			console.error("[信息接收]此消息未被识别！");
+			return;
+		}
+
+		if (!detectData()) {
 			return;
 		}
 
@@ -195,7 +250,9 @@ exports.socketServer = function (socket) {
 					if (logininUsers[dataJSON.acc] != undefined) {
 						return socket.write(JSON.stringify({ cmd: "login", suc: 4 }))//已经登录
 					}
-					logininUsers[dataJSON.acc] = address
+					logininUsers[dataJSON.acc] = socket;
+					loginingUser = dataJSON.acc;
+					dataUsedSize = userInfo.dataUsedSize;
 					console.log("[用户系统]客户端登录了账户：" + dataJSON.acc);
 					return socket.write(JSON.stringify({ cmd: "login", suc: 0 }))//登陆成功
 				} else {
@@ -227,10 +284,67 @@ exports.socketServer = function (socket) {
 				fs.writeFileSync("./users/" + dataJSON.acc + ".json", JSON.stringify(logData));
 				console.log("[用户系统]客户端注册了账户：" + dataJSON.acc);
 				return socket.write(JSON.stringify({ cmd: "register", suc: 0 }));//注册成功
-			case "getValues"://请求获取云数据
+			case "getValue"://请求获取云数据
+				var nameSpace = dataJSON.ns;
+				var key = dataJSON.key;
+				var permission = 0
+				if (loginingUser) {
+					if (nameSpace == loginingUser) {
+						permission = 2
+					} else {
+						permission = 1
+					}
+				}
+				var keyP = getDataPermission(nameSpace, key);
+				if (keyP <= permission) {
+					return socket.write(JSON.stringify({ cmd: "getValues", stat: 0, value: getDataValue(nameSpace, key) }));
+				} else {
+					return socket.write(JSON.stringify({ cmd: "getValues", stat: 1 }));//权限不足
+				}
 
 			case "setValue"://请求设置云数据
 
+				var nameSpace = dataJSON.ns;
+				var key = dataJSON.key;
+				var value = dataJSON.value;
+				var permission = 0
+				if (loginingUser) {
+					if (nameSpace == loginingUser) {
+						permission = 2
+					} else {
+						permission = 1
+					}
+				}
+				var keyP = getDataPermission(nameSpace, key);
+
+
+
+				if (keyP <= permission) {
+					setDataValue(nameSpace, key, value);
+					return socket.write(JSON.stringify({ cmd: "setValues", stat: 0 }));
+				} else {
+					return socket.write(JSON.stringify({ cmd: "setValues", stat: 1 }));//权限不足
+				}
+
+			case "setVP":
+				var nameSpace = dataJSON.ns;
+				var key = dataJSON.key;
+				var newPermission = dataJSON.np;
+				var permission = 0
+				if (loginingUser) {
+					if (nameSpace == loginingUser) {
+						permission = 2
+					} else {
+						permission = 1
+					}
+				}
+				var keyP = getDataPermission(nameSpace, key);
+				if (keyP <= permission) {
+					setDataPermission(nameSpace, key, newPermission);
+					return socket.write(JSON.stringify({ cmd: "setVP", stat: 0 }));
+				} else {
+					return socket.write(JSON.stringify({ cmd: "setVP", stat: 1 }));//权限不足
+				}
 			case "hb":
 				return socket.write(JSON.stringify({ cmd: "hb", stat: 0, ver: config.serverInfo.version }));//心跳包
 			default:
@@ -251,12 +365,8 @@ exports.socketServer = function (socket) {
 		}
 
 		users.splice(users.indexOf(socket));
-		for (u in logininUsers) {
-			if (logininUsers[u] == address) {
-				logininUsers[u] = undefined
-				break
-			}
-		}
+		logininUsers[loginingUser] = undefined;
+
 	})
 
 	socket.on('error', function (err) {
@@ -265,12 +375,7 @@ exports.socketServer = function (socket) {
 		console.log("[注意]错误信息：" + err);
 
 		users.splice(users.indexOf(socket));
-		for (u in logininUsers) {
-			if (logininUsers[u] == address) {
-				logininUsers[u] = undefined
-				break
-			}
-		}
+		logininUsers[loginingUser] = undefined;
 
 	})
 

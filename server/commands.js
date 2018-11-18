@@ -18,18 +18,30 @@ var helps = {
 exports.commands = {
     help: function (args, server) {
         var cmdName = args[0]
-        if (helps[cmdName] != undefined)
-        {
-            if (typeof helps[cmdName] == "string")
-            {
-                console.log(helps[cmdName])
-            }else{//默认为数组
-                for (var i=0;i<helps[cmdName].length;i++)
-                {
-                    console.log(helps[cmdName][i])
+        if (cmdName) {
+            if (helps[cmdName] != undefined) {
+                if (typeof helps[cmdName] == "string") {
+                    console.log(helps[cmdName])
+                } else {//默认为数组
+                    for (var i = 0; i < helps[cmdName].length; i++) {
+                        console.log(helps[cmdName][i])
+                    }
+                }
+            } else {
+                console.log("没有关于 " + cmdName + " 的帮助信息")
+            }
+        } else {//输出所有指令第一行的帮助
+            console.log("帮助指令表：")
+            console.log("输入 help (指令名称) 来查询指定指令的详细帮助说明\n")
+            for (var k in helps) {
+                if (typeof helps[k] == "string") {
+                    console.log(helps[k])
+                } else {
+                    console.log(helps[k][0])
                 }
             }
         }
+
     },
     kick: function (args, server) {
         var id = args[0];//用户名称或ip地址
