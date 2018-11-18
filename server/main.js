@@ -55,7 +55,9 @@ if (!fs.existsSync("./serverStat.json")) {
 
 var serverStat = JSON.parse(fs.readFileSync("./serverStat.json"));
 
-ssServer.lastGlobalDataSize = serverStat.globalDataSize;
+if (serverStat.globalDataSize) {
+    ssServer.lastGlobalDataSize = serverStat.globalDataSize;
+}
 
 serverStat = undefined;
 
