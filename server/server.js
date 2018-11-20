@@ -1,5 +1,6 @@
 const config = require("./config")
 const commands = require("./commands")
+const myUtil = require("./myUtil")
 const minAccLen = config.config.minAccLen //用户名最小长度
 const minPassLen = config.config.minPassLen//密码最小长度
 
@@ -58,7 +59,7 @@ exports.runCommand = function (command) {
 		commands.commands[cmd](args, this)
 		return
 	} else {
-		console.log("未知的指令：" + command);
+		myUtil.log("未知的指令：" + command);
 	}
 }
 
@@ -162,8 +163,8 @@ function setDataPermission(user, key, newPermission) {
 	}
 }
 
-exports.setDataAndRecordValue = setDataValue;
-exports.getDataAndRecordValue = getDataValue;
+exports.setDataValue = setDataValue;
+exports.getDataValue = getDataValue;
 exports.getDataPermission = getDataPermission;
 exports.setDataPermission = setDataPermission;
 
@@ -175,7 +176,7 @@ exports.socketServer = function (socket) {
 	var lastDataSize = 0;
 	var dataUsedSize = 0;
 	var loginingUser = null;//登录的用户
-	console.log("连接到新客户端：" + address);
+	myUtil.log("连接到新客户端：" + address);
 
 	users.push(socket);
 
@@ -186,10 +187,10 @@ exports.socketServer = function (socket) {
 
 		if (totalBytes >= config.config.maxDataSize || dataUsedSize >= config.config.maxDataSize) {
 			if (exports.lastGlobalDataSize + globalDataSize >= config.config.maxGlobalDataSize) {
-				console.log("警告！当前数据传输量已超出定义水平！");
-				console.log("当前全局已写出数据量：" + formatSize(globalDataSize));
-				console.log("原定义标准写出数据量：" + formatSize(config.config.maxGlobalDataSize))
-				console.log("已超出预定的 " + (globalDataSize / config.config.maxGlobalDataSize * 100).toFixed(2) + "%！")
+				myUtil.error("警告！当前数据传输量已超出定义水平！");
+				myUtil.error("当前全局已写出数据量：" + formatSize(globalDataSize));
+				myUtil.error("原定义标准写出数据量：" + formatSize(config.config.maxGlobalDataSize))
+				myUtil.error("已超出预定的 " + (globalDataSize / config.config.maxGlobalDataSize * 100).toFixed(2) + "%！")
 				return false;//将拒绝回复信息
 			}
 			socket.write(JSON.stringify({ cmd: "outOfDataSize" }));
@@ -204,15 +205,15 @@ exports.socketServer = function (socket) {
 	};
 
 	socket.on('data', function (data) {
-		//console.log("接收到信息！");
-		console.log("[信息接收]用户：" + address);
-		//console.log("数据：" + data);
+		//myUtil.log("接收到信息！");
+		myUtil.log("[信息接收]用户：" + address);
+		//myUtil.log("数据：" + data);
 		try {
 			var dataJSON = JSON.parse(data);
 		} catch (err) {
-			console.error("[信息接收]解析数据时发生错误：" + err);
-			console.error("[消息接收]原消息为：" + data);
-			console.error("[信息接收]此消息未被识别！");
+			myUtil.warn("[信息接收]解析数据时发生错误：" + err);
+			myUtil.warn("[消息接收]原消息为：" + data);
+			myUtil.warn("[信息接收]此消息未被识别！");
 			return;
 		}
 
@@ -237,10 +238,10 @@ exports.socketServer = function (socket) {
 					logininUsers[dataJSON.acc] = socket;
 					loginingUser = dataJSON.acc;
 					dataUsedSize = userInfo.dataUsedSize;
-					console.log("[用户系统]客户端登录了账户：" + dataJSON.acc);
+					myUtil.log("[用户系统]客户端登录了账户：" + dataJSON.acc);
 					return socket.write(JSON.stringify({ cmd: "login", suc: 0 }))//登陆成功
 				} else {
-					//console.log("[用户系统]用户企图登录账户失败：" + dataJSON.acc);
+					//myUtil.log("[用户系统]用户企图登录账户失败：" + dataJSON.acc);
 					return socket.write(JSON.stringify({ cmd: "login", suc: 3 }))//密码错误
 				}
 			case "register"://注册
@@ -250,7 +251,7 @@ exports.socketServer = function (socket) {
 				if (dataJSON.acc.length < minAccLen || dataJSON.pass.length < minPassLen) {
 					return socket.write(JSON.stringify({ cmd: "register", suc: 2 }))//用户名或密码过于简单
 				}
-				if (dataJSON.acc.search("[\\\/\:\*\?\<\>\|\"]") != -1) {
+				if (dataJSON.acc.search("[\\\/\:\*\?\<\>\|\"\ ]") != -1) {
 					return socket.write(JSON.stringify({ cmd: "register", suc: 3 }))//用户名不合法（有非法字符）
 				}
 				if (fs.existsSync("./users/" + dataJSON.acc + ".json")) {
@@ -266,7 +267,7 @@ exports.socketServer = function (socket) {
 				}
 
 				fs.writeFileSync("./users/" + dataJSON.acc + ".json", JSON.stringify(logData));
-				console.log("[用户系统]客户端注册了账户：" + dataJSON.acc);
+				myUtil.log("[用户系统]客户端注册了账户：" + dataJSON.acc);
 				return socket.write(JSON.stringify({ cmd: "register", suc: 0 }));//注册成功
 			case "getValue"://请求获取云数据
 				var nameSpace = dataJSON.ns;
@@ -314,6 +315,9 @@ exports.socketServer = function (socket) {
 				var nameSpace = dataJSON.ns;
 				var key = dataJSON.key;
 				var newPermission = dataJSON.np;
+				if (newPermission >= 3 || newPermission < 0) {
+					return socket.write(JSON.stringify({ cmd: "setVP", stat: 3 }));//值错误
+				}
 				var permission = 0
 				if (loginingUser) {
 					if (nameSpace == loginingUser) {
@@ -332,20 +336,20 @@ exports.socketServer = function (socket) {
 			case "hb":
 				return socket.write(JSON.stringify({ cmd: "hb", stat: 0, ver: config.serverInfo.version }));//心跳包
 			default:
-				console.log("[信息接收]接收了未知的指令：" + dataJSON.cmd);
+				myUtil.log("[信息接收]接收了未知的指令：" + dataJSON.cmd);
 		}
 	})
 
 	socket.on('end', function () {
-		console.log("客户端断开连接：" + address);
+		myUtil.log("客户端断开连接：" + address);
 		users.splice(users.indexOf(socket));
 	})
 
 	socket.on('close', function (hasErr) {
 		if (hasErr) {
-			console.log("[注意]客户端意外的断开了连接：" + address);
+			myUtil.log("[注意]客户端意外的断开了连接：" + address);
 		} else {
-			console.log("客户端断开连接：" + address);
+			myUtil.log("客户端断开连接：" + address);
 		}
 
 		users.splice(users.indexOf(socket));
@@ -355,8 +359,8 @@ exports.socketServer = function (socket) {
 
 	socket.on('error', function (err) {
 
-		console.log("[注意]客户端意外的断开了连接：" + address);
-		console.log("[注意]错误信息：" + err);
+		myUtil.log("[注意]客户端意外的断开了连接：" + address);
+		myUtil.log("[注意]错误信息：" + err);
 
 		users.splice(users.indexOf(socket));
 		logininUsers[loginingUser] = undefined;
@@ -364,6 +368,6 @@ exports.socketServer = function (socket) {
 	})
 
 	socket.write(JSON.stringify({ cmd: "requireLogin", ver: config.serverInfo.version }))
-	console.log("已请求客户端进行登录！");
+	//myUtil.log("已请求客户端进行登录！");
 
 };
