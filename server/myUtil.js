@@ -34,15 +34,15 @@ function formatSize(size, useLitePower) {
 function getFileSize(path) {
     var size = 0
     files = fs.readdirSync(path);
-    files.forEach(function (file) {
-        var states = fs.statSync(path + "/" + file);
+    for (var file in files) {
+        var states = fs.statSync(path + "/" + files[file]);
         if (states.isDirectory()) {
-            size += getFileSize(path + "/" + file);
+            size += getFileSize(path + "/" + files[file]);
         } else {
-            const file = fs.readFileSync(path + "/" + file);
-            size += file.length;
+            const wfile = fs.readFileSync(path + "/" + files[file]);
+            size += wfile.length;
         }
-    })
+    }
     return size;
 }
 
