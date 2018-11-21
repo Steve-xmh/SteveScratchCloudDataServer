@@ -15,17 +15,7 @@ exports.lastGlobalDataSize = 0;
 
 exports.getCurGlobalDataSize = function () { return globalDataSize };
 
-function formatSize(size, useLitePower) {
-	var sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "BB", "NB", "DB"];
-	var unit = 0;
-	var power = useLitePower ? 1000 : 1024;
-	while (size > power && unit < sizes.length)
-	{
-		unit++;
-		size = size / power
-	}
-	return size.toFixed(2) + sizes[unit];
-}
+
 
 /**
  * 广播所有客户端
@@ -188,8 +178,8 @@ exports.socketServer = function (socket) {
 		if (totalBytes >= config.config.maxDataSize || dataUsedSize >= config.config.maxDataSize) {
 			if (exports.lastGlobalDataSize + globalDataSize >= config.config.maxGlobalDataSize) {
 				myUtil.error("警告！当前数据传输量已超出定义水平！");
-				myUtil.error("当前全局已写出数据量：" + formatSize(globalDataSize));
-				myUtil.error("原定义标准写出数据量：" + formatSize(config.config.maxGlobalDataSize))
+				myUtil.error("当前全局已写出数据量：" + myUtil.formatSize(globalDataSize));
+				myUtil.error("原定义标准写出数据量：" + myUtil.formatSize(config.config.maxGlobalDataSize))
 				myUtil.error("已超出预定的 " + (globalDataSize / config.config.maxGlobalDataSize * 100).toFixed(2) + "%！")
 				return false;//将拒绝回复信息
 			}
@@ -282,9 +272,9 @@ exports.socketServer = function (socket) {
 				}
 				var keyP = getDataPermission(nameSpace, key);
 				if (keyP <= permission) {
-					return socket.write(JSON.stringify({ cmd: "getValues", stat: 0, value: getDataValue(nameSpace, key) }));
+					return socket.write(JSON.stringify({ cmd: "getValue", stat: 0, value: getDataValue(nameSpace, key) }));
 				} else {
-					return socket.write(JSON.stringify({ cmd: "getValues", stat: 1 }));//权限不足
+					return socket.write(JSON.stringify({ cmd: "getValue", stat: 1 }));//权限不足
 				}
 
 			case "setValue"://请求设置云数据
@@ -347,7 +337,7 @@ exports.socketServer = function (socket) {
 
 	socket.on('close', function (hasErr) {
 		if (hasErr) {
-			myUtil.log("[注意]客户端意外的断开了连接：" + address);
+			myUtil.warn("[注意]客户端意外的断开了连接：" + address);
 		} else {
 			myUtil.log("客户端断开连接：" + address);
 		}
@@ -359,8 +349,8 @@ exports.socketServer = function (socket) {
 
 	socket.on('error', function (err) {
 
-		myUtil.log("[注意]客户端意外的断开了连接：" + address);
-		myUtil.log("[注意]错误信息：" + err);
+		myUtil.warn("[注意]客户端意外的断开了连接：" + address);
+		myUtil.warn("[注意]错误信息：" + err);
 
 		users.splice(users.indexOf(socket));
 		logininUsers[loginingUser] = undefined;

@@ -1,4 +1,6 @@
 const myUtil = require("./myUtil")
+const fs = require("fs")
+const os = require("os")
 
 //在此处输入帮助信息
 //数组用于多行文字
@@ -28,6 +30,10 @@ var helps = {
     info: [
         "info",
         "输出服务器状态信息"
+    ],
+    stop: [
+        "stop",
+        "断开客户端的连接并停止运行服务器"
     ]
 }
 
@@ -124,6 +130,20 @@ exports.commands = {
     },
 
     info: function (args, server) {
-        myUtil.log("暂时没有呢~")
+        myUtil.log("服务器运行状态");
+        myUtil.log("服务器已运行时长：" + process.uptime() + "秒")
+        myUtil.log("当前已用内存：" + myUtil.formatSize(process.memoryUsage().rss));
+        myUtil.log("系统剩余内存：" + myUtil.formatSize(os.freemem()))
+        myUtil.log("正在连接的客户端数量：" + server.users.length)
+        myUtil.log("已登录的用户数量：" + server.logininUsers.length)
+
+        if (args[0] == "fs") {
+            myUtil.log("正在计算文件大小……")
+            myUtil.log("用户信息文件大小：" + myUtil.formatSize(myUtil.getFileSize("./users")))
+            myUtil.log("用户云数据文件大小：" + myUtil.formatSize(myUtil.getFileSize("./cloudData")))
+        } else {
+            myUtil.log("输入 info fs 查看用户数据大小统计信息（略耗时！）")
+        }
+
     }
 }
