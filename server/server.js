@@ -94,9 +94,41 @@ exports.runCommand = function (command) {
 */
 function setDataValue(user, key, data) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
-		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		var newData;
+		try {
+			newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		} catch (err) {
+			myUtil.error("云数据JSON解析失败：" + err);
+			if (config.config.deleteBrokenCloudData) {
+				
+				if (config.config.saveBrokenCloudDataClone) {
+					if (!fs.existsSync("./brokenData")) fs.mkdirSync("./brokenData");
+					newData = fs.readFileSync("./cloudData/" + user + ".json");
+					fs.writeFileSync("./brokenData/" + new Date().toUTCString() + " " + user + ".json", newData)//保存文件副本
+					myUtil.warn("源文件已备份到 ./brokenData 文件夹！如需直接删除错误的云数据文件，请修改 config.js 中的 saveBrokenCloudDataClone 键值！")
+				} else {
+					myUtil.warn("源文件已被重置！如需保留错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 和 saveBrokenCloudDataClone 键值！")
+				}
+
+				var newData = {
+					data: {
+						key: data
+					},//数据存储的地方
+					permission: {
+						key: 1
+					}//权限清单，对应每个键值
+				}
+				fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+				
+				return true;//依然设置成功了
+			} else {
+				myUtil.warn("原文件没有被删除，如需自动删除解析错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 键值！")
+				return false;
+			}
+		}
 		newData.data[key] = data;
 		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return true;
 	} else {
 		var newData = {
 			data: {
@@ -107,12 +139,34 @@ function setDataValue(user, key, data) {
 			}//权限清单，对应每个键值
 		}
 		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return true
 	}
 }
 
 function getDataValue(user, key) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
-		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		var newData;
+		try {
+			newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		} catch (err) {
+			myUtil.error("云数据JSON解析失败：" + err);
+			if (config.config.deleteBrokenCloudData) {
+				if (config.config.saveBrokenCloudDataClone) {
+					if (!fs.existsSync("./brokenData")) fs.mkdirSync("./brokenData");
+					newData = fs.readFileSync("./cloudData/" + user + ".json");
+					fs.writeFileSync("./brokenData/" + new Date().toUTCString() + " " + user + ".json", newData)//保存文件副本
+					myUtil.warn("源文件已备份到 ./brokenData 文件夹！如需直接删除错误的云数据文件，请修改 config.js 中的 saveBrokenCloudDataClone 键值！")
+				} else {
+					myUtil.warn("源文件已被重置！如需保留错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 和 saveBrokenCloudDataClone 键值！")
+				}
+			}
+			newData = {
+				data: {},//数据存储的地方
+				permission: {}//权限清单，对应每个键值
+			}
+			fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+			return undefined;
+		}
 		return newData.data[key];
 	} else {
 		var newData = {
@@ -126,8 +180,32 @@ function getDataValue(user, key) {
 
 function getDataPermission(user, key) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
-		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
-		return newData.permission[key] === undefined ? 0 : newData.permission[key];
+
+		var newData;
+		try {
+			newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		} catch (err) {
+			myUtil.error("云数据JSON解析失败：" + err);
+			if (config.config.deleteBrokenCloudData) {
+				if (config.config.saveBrokenCloudDataClone) {
+					if (!fs.existsSync("./brokenData")) fs.mkdirSync("./brokenData");
+					newData = fs.readFileSync("./cloudData/" + user + ".json");
+					fs.writeFileSync("./brokenData/" + new Date().toUTCString() + " " + user + ".json", newData)//保存文件副本
+					myUtil.warn("源文件已备份到 ./brokenData 文件夹！如需直接删除错误的云数据文件，请修改 config.js 中的 saveBrokenCloudDataClone 键值！")
+				} else {
+					myUtil.warn("源文件已被重置！如需保留错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 和 saveBrokenCloudDataClone 键值！")
+				}
+			}
+			newData = {
+				data: {},//数据存储的地方
+				permission: {}//权限清单，对应每个键值
+			}
+			fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+			return 1;
+		}
+
+		
+		return newData.permission[key] === undefined ? 1 : newData.permission[key];
 	} else {
 		var newData = {
 			data: {},//数据存储的地方
@@ -140,9 +218,35 @@ function getDataPermission(user, key) {
 
 function setDataPermission(user, key, newPermission) {
 	if (fs.existsSync("./cloudData/" + user + ".json")) {
+
+		var newData;
+		try {
+			newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
+		} catch (err) {
+			myUtil.error("云数据JSON解析失败：" + err);
+			if (config.config.deleteBrokenCloudData) {
+				if (config.config.saveBrokenCloudDataClone) {
+					if (!fs.existsSync("./brokenData")) fs.mkdirSync("./brokenData");
+					newData = fs.readFileSync("./cloudData/" + user + ".json");
+					fs.writeFileSync("./brokenData/" + new Date().toUTCString() + " " + user + ".json", newData)//保存文件副本
+					myUtil.warn("源文件已备份到 ./brokenData 文件夹！如需直接删除错误的云数据文件，请修改 config.js 中的 saveBrokenCloudDataClone 键值！")
+				} else {
+					myUtil.warn("源文件已被重置！如需保留错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 和 saveBrokenCloudDataClone 键值！")
+				}
+			}
+			newData = {
+				data: {},//数据存储的地方
+				permission: {}//权限清单，对应每个键值
+			}
+			newData.permission[key] = newPermission;
+			fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+			return true;
+		}
+
 		var newData = JSON.parse(fs.readFileSync("./cloudData/" + user + ".json"));
 		newData.permission[key] = newPermission;
 		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return true;
 	} else {
 		var newData = {
 			data: {},//数据存储的地方
@@ -150,6 +254,7 @@ function setDataPermission(user, key, newPermission) {
 		}
 		newData.permission[key] = newPermission;
 		fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
+		return true;
 	}
 }
 
@@ -323,6 +428,16 @@ exports.socketServer = function (socket) {
 				} else {
 					return socket.write(JSON.stringify({ cmd: "setVP", stat: 1 }));//权限不足
 				}
+			case "logout":
+
+				if (loginingUser) {
+					logininUsers[loginingUser] = undefined;
+					myUtil.log("用户 " + loginingUser + " 已登出！")
+					return socket.write(JSON.stringify({ cmd: "logout", stat: 0 }));
+				} else {
+					return socket.write(JSON.stringify({ cmd: "logout", stat: 1 }));//并没有登录
+				}
+
 			case "hb":
 				return socket.write(JSON.stringify({ cmd: "hb", stat: 0, ver: config.serverInfo.version }));//心跳包
 			default:

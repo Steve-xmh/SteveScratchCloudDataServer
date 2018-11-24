@@ -91,4 +91,6 @@ process.stdin.on('readable', () => {
         }
 
     }
+    process.stdin.resume();
 });
+

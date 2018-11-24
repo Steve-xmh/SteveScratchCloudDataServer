@@ -14,6 +14,21 @@ var helps = {
         "将正在连接或已登录的用户强行断开连接",
         "例如：kick ::::192.168.0.110"
     ],
+    ban: [
+        "ban (用户名或ip地址) [封禁理由]",
+        "将用户或者正在登录的客户端所登录的用户封禁",
+        "如果是正在连接的客户端则会强制断开",
+        "以后用户企图登录时将会返回封禁理由",
+        "如果需要解封用户，请输入 unban 指令",
+        "例如：ban John_Doe You have been baned."
+    ],
+    unban: [
+        "unban (用户名)",
+        "将用户解除封禁",
+        "此时用户将可以继续登录使用云数据",
+        "如果需要封禁用户，请输入 ban 指令",
+        "例如：unban John_Doe"
+    ],
     setValue: [
         "setValue (用户名) (键值) [需要设置的值(可带空格)]",
         "设置指定用户变量中的值",
@@ -42,7 +57,7 @@ var helps = {
 //一个是传入的所有参数
 //一个是当前的服务器对象
 exports.commands = {
-    help: function (args, server) {
+    help: (args, server) => {
         var cmdName = args[0]
         if (cmdName) {
             if (helps[cmdName] != undefined) {
@@ -69,7 +84,7 @@ exports.commands = {
         }
 
     },
-    kick: function (args, server) {
+    kick: (args, server) => {
         var id = args[0];//用户名称或ip地址
         var users = server.users;
         for (var socket in users) {
@@ -80,7 +95,7 @@ exports.commands = {
         }
     },
 
-    setValue: function (args, server) {
+    setValue: (args, server) => {
         var nameSpace = args[0];
         var key = args[1];
 
@@ -106,7 +121,7 @@ exports.commands = {
         myUtil.log("原旧值为：" + oldValue);
     },
 
-    setVP: function (args, server) {
+    setVP: (args, server) => {
         var nameSpace = args[0];
         var key = args[1];
         var value = args[2];
@@ -129,7 +144,7 @@ exports.commands = {
         myUtil.log("原旧权限值为：" + oldValue);
     },
 
-    info: function (args, server) {
+    info: (args, server) => {
         myUtil.log("服务器运行状态");
         myUtil.log("服务器已运行时长：" + process.uptime() + "秒")
         myUtil.log("当前已用内存：" + myUtil.formatSize(process.memoryUsage().rss));
@@ -145,5 +160,65 @@ exports.commands = {
             myUtil.log("输入 info fs 查看用户数据大小统计信息（略耗时！）")
         }
 
+    },
+
+    ban: (args, server) => {
+        var user = args[0];
+        var counter = 2;
+        var value = args[1];
+        if (value) {
+            while (args[counter] != undefined) {
+                value = value + " " + args[counter]
+                counter++
+            }
+        }
+        if (!user || user.search("[\\\/\:\*\?\<\>\|\"]") != -1) {
+            myUtil.error("错误：未输入正确的用户名");
+            return
+        }
+        if (fs.existsSync("./users/" + user + ".json")) {
+            var userData
+            try {
+                userData = JSON.parse(fs.readFileSync("./users/" + user + ".json"));
+                userData.baned = true;
+                userData.banedReason = value;
+                fs.writeFileSync("./users/" + user + ".json", JSON.stringify(userData));
+                myUtil.log("已封禁用户 " + user);
+            } catch (err) {
+                myUtil.error("错误：用户资料解析失败：" + err)
+            };
+        } else {
+            return myUtil.error("错误：用户不存在")
+        }
+    },
+
+    unban: (args, server) => {
+        var user = args[0];
+        var counter = 2;
+        var value = args[1];
+        if (value) {
+            while (args[counter] != undefined) {
+                value = value + " " + args[counter]
+                counter++
+            }
+        }
+        if (!user || user.search("[\\\/\:\*\?\<\>\|\"]") != -1) {
+            myUtil.error("错误：未输入正确的用户名");
+            return
+        }
+        if (fs.existsSync("./users/" + user + ".json")) {
+            var userData
+            try {
+                userData = JSON.parse(fs.readFileSync("./users/" + user + ".json"));
+                userData.baned = false;
+                userData.banedReason = undefined;
+                fs.writeFileSync("./users/" + user + ".json", JSON.stringify(userData));
+                myUtil.log("已解封用户 " + user);
+            } catch (err) {
+                myUtil.error("错误：用户资料解析失败：" + err)
+            };
+        } else {
+            return myUtil.error("错误：用户不存在")
+        }
     }
 }

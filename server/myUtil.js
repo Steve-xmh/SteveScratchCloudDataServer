@@ -4,8 +4,13 @@ const fs = require("fs")
 
 function logTime() {
     const t = new Date();
-    //console.log("[" + (t.getHours + 1) + ":" + (t.getMinutes + 1) + ":" + (t.getSeconds + 1) + "]")
-    return "[" + (t.getHours() + 1) + ":" + (t.getMinutes() + 1) + ":" + (t.getSeconds() + 1) + "]";
+    var h = t.getHours().toString();
+    if (h.length == 1) h = "0" + h;
+    var m = t.getMinutes().toString();
+    if (m.length == 1) m = "0" + m;
+    var s = t.getSeconds().toString();
+    if (s.length == 1) s = "0" + s;
+    return "[" + h + ":" + m + ":" + s + "]";
 }
 
 function log(msg) {
