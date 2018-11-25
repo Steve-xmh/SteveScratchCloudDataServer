@@ -15,8 +15,6 @@ exports.lastGlobalDataSize = 0;
 
 exports.getCurGlobalDataSize = function () { return globalDataSize };
 
-
-
 /**
  * 广播所有客户端
  * @param msg 要发送的信息，最好是JSON字符串
@@ -100,7 +98,7 @@ function setDataValue(user, key, data) {
 		} catch (err) {
 			myUtil.error("云数据JSON解析失败：" + err);
 			if (config.config.deleteBrokenCloudData) {
-				
+
 				if (config.config.saveBrokenCloudDataClone) {
 					if (!fs.existsSync("./brokenData")) fs.mkdirSync("./brokenData");
 					newData = fs.readFileSync("./cloudData/" + user + ".json");
@@ -119,7 +117,7 @@ function setDataValue(user, key, data) {
 					}//权限清单，对应每个键值
 				}
 				fs.writeFileSync("./cloudData/" + user + ".json", JSON.stringify(newData));
-				
+
 				return true;//依然设置成功了
 			} else {
 				myUtil.warn("原文件没有被删除，如需自动删除解析错误的云数据文件，请修改 config.js 中的 deleteBrokenCloudData 键值！")
@@ -204,7 +202,7 @@ function getDataPermission(user, key) {
 			return 1;
 		}
 
-		
+
 		return newData.permission[key] === undefined ? 1 : newData.permission[key];
 	} else {
 		var newData = {
@@ -325,6 +323,9 @@ exports.socketServer = function (socket) {
 					return socket.write(JSON.stringify({ cmd: "login", suc: 2 }))//账户不存在
 				}
 				var userInfo = JSON.parse(fs.readFileSync("./users/" + dataJSON.acc + ".json"));
+				if (userInfo.baned) {
+					return socket.write(JSON.stringify({ cmd: "login", suc: 5, reason: userInfo.banedReason }));//已被封禁 
+				}
 				if (userInfo.pass == dataJSON.pass) {
 					//登录成功
 					if (logininUsers[dataJSON.acc] != undefined) {

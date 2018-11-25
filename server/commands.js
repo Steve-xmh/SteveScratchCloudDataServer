@@ -87,11 +87,18 @@ exports.commands = {
     kick: (args, server) => {
         var id = args[0];//用户名称或ip地址
         var users = server.users;
+        var logininUsers = server.logininUsers;
         for (var socket in users) {
             if (users[socket].address().address == id) {
                 users[socket].end(JSON.stringify({ cmd: "kicked" }));
                 users[socket].destory();
+                return myUtil.log("已强行断开客户端：" + id)
             }
+        }
+        if (logininUsers[id]) {
+            logininUsers[id].end(JSON.stringify({ cmd: "kicked" }));
+            logininUsers[id].destory();
+            return myUtil.log("已强行断开用户：" + id)
         }
     },
 
@@ -184,6 +191,13 @@ exports.commands = {
                 userData.banedReason = value;
                 fs.writeFileSync("./users/" + user + ".json", JSON.stringify(userData));
                 myUtil.log("已封禁用户 " + user);
+
+                var logininUsers = server.logininUsers;
+                if (logininUsers[user]) {
+                    logininUsers[user].end(JSON.stringify({ cmd: "baned", reason: value }));
+                    logininUsers[user].destory();
+                }
+
             } catch (err) {
                 myUtil.error("错误：用户资料解析失败：" + err)
             };
