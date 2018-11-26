@@ -3,6 +3,7 @@ const commands = require("./commands")
 const myUtil = require("./myUtil")
 const minAccLen = config.config.minAccLen //用户名最小长度
 const minPassLen = config.config.minPassLen//密码最小长度
+const readDelay = config.config.readDelay
 
 var fs = require("fs");
 var users = [];//正在连接的Socket客户端
@@ -268,6 +269,7 @@ exports.socketServer = function (socket) {
 	var address = socket.address().address + ":" + socket.address().port;
 	var lastDataSize = 0;
 	var dataUsedSize = 0;
+	var lastCmdTime = process.uptime();
 	var loginingUser = null;//登录的用户
 	myUtil.log("连接到新客户端：" + address);
 
@@ -298,6 +300,13 @@ exports.socketServer = function (socket) {
 	};
 
 	socket.on('data', function (data) {
+
+		if (process.uptime() - lastCmdTime <= readDelay) {
+			return
+		} else {
+			lastCmdTime = process.uptime()
+		}
+
 		//myUtil.log("接收到信息！");
 		myUtil.log("[信息接收]用户：" + address);
 		//myUtil.log("数据：" + data);
