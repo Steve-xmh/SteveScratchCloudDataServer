@@ -1,3 +1,6 @@
 server/
+cloudData/
+users/
 .vscode/
 node_modules/
+serverStat.json
